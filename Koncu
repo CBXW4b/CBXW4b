@@ -1,0 +1,361 @@
+`tracking_link_creator.html`
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Tracking Link Creator & Tracker</title>
+<style>
+  /* Reset */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 10px 30px;
+  }
+  h1 {
+    margin-top: 20px;
+    font-weight: 700;
+    font-size: 2rem;
+    text-align: center;
+    text-shadow: 0 0 8px rgba(0,0,0,0.25);
+  }
+  .container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px 25px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    margin-top: 20px;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    margin-top: 10px;
+  }
+  input[type=text] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    outline: none;
+  }
+  button {
+    margin-top: 15px;
+    background-color: #5a4def;
+    border: none;
+    color: white;
+    width: 100%;
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(90,77,239,0.75);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  button:hover {
+    background-color: #4a3bcc;
+    box-shadow: 0 6px 12px rgba(74,59,204,0.9);
+  }
+  .link-output {
+    margin-top: 15px;
+    word-break: break-all;
+    font-size: 0.9rem;
+    background: rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 8px;
+    user-select: all;
+  }
+  .info {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #dce6f6cc;
+  }
+  .locations-list {
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+    color: #e4e4f7;
+  }
+  .location-entry {
+    background: rgba(0,0,0,0.3);
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .footer {
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: #ddd;
+    text-align: center;
+  }
+  @media (max-width: 400px) {
+    .container {
+      max-width: 100%;
+      border-radius: 10px;
+      padding: 15px 15px;
+    }
+    h1 {
+      font-size: 1.6rem;
+    }
+    button {
+      font-size: 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+<h1>Tracking Link Creator & Tracker</h1>
+
+<div class="container" id="creator-container">
+  <label for="trackingIdInput">Enter Tracking Link ID:</label>
+  <input type="text" id="trackingIdInput" placeholder="Example: campaign123" />
+  <button id="generateBtn">Generate Tracking Link</button>
+  <div class="link-output" id="trackingLinkOutput" style="display:none;"></div>
+  <div class="info" id="copyInfo" style="display:none;">Click the link above to copy it.</div>
+</div>
+
+<div class="container" id="stats-container" style="display:none;">
+  <h2>Visitor Locations for ID: <span id="currentIdDisplay"></span></h2>
+  <div class="locations-list" id="locationsList"></div>
+  <button id="backToCreatorBtn" style="background:#a34343; margin-top: 10px;">Back to Creator</button>
+</div>
+
+<script>
+  (function(){
+    const baseUrl = window.location.origin + window.location.pathname;
+
+    function getParameterByName(name) {
+      const url = window.location.href;
+      name = name.replace(/[\[\]]/g, '\\$&');
+      const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+      const results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    // Elements
+    const creatorContainer = document.getElementById('creator-container');
+    const trackingIdInput = document.getElementById('trackingIdInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const trackingLinkOutput = document.getElementById('trackingLinkOutput');
+    const copyInfo = document.getElementById('copyInfo');
+
+    const statsContainer = document.getElementById('stats-container');
+    const locationsList = document.getElementById('locationsList');
+    const currentIdDisplay = document.getElementById('currentIdDisplay');
+    const backToCreatorBtn = document.getElementById('backToCreatorBtn');
+
+    // Storage key in localStorage for all tracking data
+    const STORAGE_KEY = 'tracking_data';
+
+    function saveLocationData(id, locationData) {
+      let data = localStorage.getItem(STORAGE_KEY);
+      data = data ? JSON.parse(data) : {};
+      if (!data[id]) {
+        data[id] = [];
+      }
+      data[id].push(locationData);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getLocationData(id) {
+      let data = localStorage.getItem(STORAGE_KEY);
+      data = data ? JSON.parse(data) : {};
+      return data[id] || [];
+    }
+
+    function formatTimestamp(timestamp) {
+      const d = new Date(timestamp);
+      return d.toLocaleString();
+    }
+
+    function renderLocationsList(id) {
+      const locations = getLocationData(id);
+      currentIdDisplay.textContent = id;
+      locationsList.innerHTML = '';
+      if (locations.length === 0) {
+        locationsList.innerHTML = '<p>No visitors recorded yet.</p>';
+        return;
+      }
+      locations.forEach((loc, idx) => {
+        let html = '<div class="location-entry">';
+        html += `<strong>Visitor #${idx + 1}</strong><br>`;
+        html += `Time: ${formatTimestamp(loc.timestamp)}<br>`;
+        html += `Latitude: ${loc.latitude.toFixed(5)}<br>`;
+        html += `Longitude: ${loc.longitude.toFixed(5)}<br>`;
+        if (loc.accuracy)
+          html += `Accuracy: ±${loc.accuracy} meters<br>`;
+        html += '</div>';
+        locationsList.insertAdjacentHTML('beforeend', html);
+      });
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          copyInfo.textContent = "Link copied to clipboard!";
+          copyInfo.style.color = '#a3f9a3';
+          copyInfo.style.display = 'block';
+          setTimeout(() => { copyInfo.style.display = 'none'; }, 2500);
+        }, () => {
+          copyInfo.textContent = "Failed to copy link.";
+          copyInfo.style.color = '#f97373';
+          copyInfo.style.display = 'block';
+        });
+      } else {
+        // Fallback for older browsers
+        try {
+          const el = document.createElement('textarea');
+          el.value = text;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          copyInfo.textContent = "Link copied to clipboard!";
+          copyInfo.style.color = '#a3f9a3';
+          copyInfo.style.display = 'block';
+          setTimeout(() => { copyInfo.style.display = 'none'; }, 2500);
+        } catch {
+          copyInfo.textContent = "Failed to copy link.";
+          copyInfo.style.color = '#f97373';
+          copyInfo.style.display = 'block';
+        }
+      }
+    }
+
+    // Generate link button click
+    generateBtn.addEventListener('click', () => {
+      const id = trackingIdInput.value.trim();
+      if (!id) {
+        alert('Please enter a tracking link ID.');
+        return;
+      }
+      // Construct link with id param
+      const link = baseUrl + '?id=' + encodeURIComponent(id);
+      trackingLinkOutput.textContent = link;
+      trackingLinkOutput.style.display = 'block';
+      copyInfo.textContent = "Click the link above to copy it.";
+      copyInfo.style.color = '#f0f0f0';
+      copyInfo.style.display = 'block';
+
+      // Make output clickable to copy
+      trackingLinkOutput.style.cursor = 'pointer';
+      trackingLinkOutput.onclick = () => {
+        copyToClipboard(link);
+      };
+    });
+
+    backToCreatorBtn.addEventListener('click', () => {
+      statsContainer.style.display = 'none';
+      creatorContainer.style.display = 'block';
+    });
+
+    // When accessed with an id param - visitor page
+    const trackingId = getParameterByName('id');
+
+    if (trackingId) {
+      // Hide creator container
+      creatorContainer.style.display = 'none';
+      statsContainer.style.display = 'none';
+
+      // Attempt to get location
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        document.body.innerHTML = '<p style="color:#f88; text-align:center; margin-top:50px;">Geolocation is not supported by your browser.</p>';
+      } else {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const locObj = {
+            timestamp: Date.now(),
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy || null
+          };
+          // Save location
+          saveLocationData(trackingId, locObj);
+          // Show thank you message
+          document.body.innerHTML = `
+            <div style="max-width:400px; margin:50px auto; background: rgba(0,0,0,0.3); border-radius:15px; padding: 25px; color: #d0ffd0; box-shadow: 0 0 15px #56c6bb;">
+              <h1 style="text-align:center;">Thank You for Visiting!</h1>
+              <p style="text-align:center;">Your location has been recorded.</p>
+              <p style="font-size:0.8rem; color:#a2f7f1; text-align:center; margin-top:20px;">You may close this tab/window now.</p>
+            </div>
+          `;
+        }, (err) => {
+          document.body.innerHTML = `
+            <div style="max-width:400px; margin:50px auto; background: rgba(0,0,0,0.3); border-radius:15px; padding: 25px; color: #ffaaaa; box-shadow: 0 0 15px #bb5656;">
+              <h1 style="text-align:center;">Location Permission Denied</h1>
+              <p style="text-align:center;">Cannot record your location without permission.</p>
+              <p style="font-size:0.8rem; color:#ff7e7e; text-align:center; margin-top:20px;">Please allow location access or close this tab.</p>
+            </div>
+          `;
+        }, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60000
+        });
+      }
+    } else {
+      // No id param, show creator page
+      creatorContainer.style.display = 'block';
+      statsContainer.style.display = 'none';
+
+      // Optional: add ability to view stats for an ID
+      const statsLinkLabel = document.createElement('label');
+      statsLinkLabel.textContent = "View Stats for Tracking ID:";
+      const statsInput = document.createElement('input');
+      statsInput.type = 'text';
+      statsInput.id = 'statsIdInput';
+      statsInput.placeholder = "Enter tracking ID";
+      statsInput.style.marginTop = '15px';
+      statsInput.style.padding = '10px 12px';
+      statsInput.style.borderRadius = '8px';
+      statsInput.style.border = 'none';
+      statsInput.style.width = '100%';
+      statsInput.style.fontSize = '1rem';
+      statsInput.style.outline = 'none';
+
+      const viewStatsBtn = document.createElement('button');
+      viewStatsBtn.textContent = 'View Visitor Locations';
+      viewStatsBtn.style.marginTop = '15px';
+      viewStatsBtn.style.backgroundColor = '#3ab49a';
+      viewStatsBtn.style.boxShadow = '0 4px 8px rgba(58,180,154,0.75)';
+      viewStatsBtn.addEventListener('mouseenter', () => viewStatsBtn.style.backgroundColor = '#31947f');
+      viewStatsBtn.addEventListener('mouseleave', () => viewStatsBtn.style.backgroundColor = '#3ab49a');
+
+      viewStatsBtn.onclick = () => {
+        const statsId = statsInput.value.trim();
+        if (!statsId) {
+          alert('Please enter a tracking ID to view stats.');
+          return;
+        }
+        creatorContainer.style.display = 'none';
+        statsContainer.style.display = 'block';
+        renderLocationsList(statsId);
+      };
+
+      creatorContainer.appendChild(statsLinkLabel);
+      creatorContainer.appendChild(statsInput);
+      creatorContainer.appendChild(viewStatsBtn);
+    }
+  })();
+</script>
+</body>
+</html>
+
+```
