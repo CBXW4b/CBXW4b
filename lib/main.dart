@@ -153,10 +153,18 @@ class _MainAppStructureState extends State<MainAppStructure> {
 }
 
 // --- 3. REAL-TIME DASHBOARD ---
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({Key? key}) : super(key: key);
   @override
-  _DashboardScreenState createState() => _DashboardScreenState();
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text("SYSTEM ONLINE\nAll Modules Initialized", 
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFF39FF14), fontSize: 20)),
+      ),
+    );
+  }
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
