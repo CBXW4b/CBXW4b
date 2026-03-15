@@ -1,46 +1,21 @@
 name: Build Zorrr Black APK
 on: [push]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-          
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-
-      - name: Reconstruct and Build
-        run: |
-          # 1. Amankan kode main.dart ke folder sementara di luar jangkauan pembersihan
-          mkdir /tmp/backup
-          cp lib/main.dart /tmp/backup/main.dart
-          
-          # 2. Bersihkan total folder utama
-          rm -rf *
-          
-          # 3. Rakit ulang project Flutter yang standar & sehat
-          flutter create --project-name zorrr_black_ai .
-          
-          # 4. Pasang library komunikasi AI
-          flutter pub add http
-          
-          # 5. Masukkan kembali kode sakti Anda ke dalam project baru
-          cp /tmp/backup/main.dart lib/main.dart
-          
-      - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
+      - run: flutter create . --force
+      - run: flutter pub add http
+      - run: flutter build apk --release --no-tree-shake-icons
+      - uses: actions/upload-artifact@v4
         with:
           name: zorrr-black-apk
           path: build/app/outputs/flutter-apk/app-release.apk
