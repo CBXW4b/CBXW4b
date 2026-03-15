@@ -20,21 +20,21 @@ jobs:
 
       - name: Reconstruct and Build
         run: |
-          # 1. Simpan kode main.dart Anda ke memori sementara
-          cp lib/main.dart main_backup.dart
+          # 1. Amankan kode main.dart ke folder sementara di luar jangkauan pembersihan
+          mkdir /tmp/backup
+          cp lib/main.dart /tmp/backup/main.dart
           
-          # 2. Hapus sisa-sisa project yang berantakan
-          rm -rf ./* .??*
+          # 2. Bersihkan total folder utama
+          rm -rf *
           
-          # 3. Buat project baru yang benar-benar bersih
+          # 3. Rakit ulang project Flutter yang standar & sehat
           flutter create --project-name zorrr_black_ai .
           
-          # 4. Suntikkan kembali kode sakti Anda dan dependensi
-          rm lib/main.dart
-          cp ../main_backup.dart lib/main.dart
-          
-          # 5. Tambahkan library HTTP (satu-satunya yang kita butuhkan sekarang)
+          # 4. Pasang library komunikasi AI
           flutter pub add http
+          
+          # 5. Masukkan kembali kode sakti Anda ke dalam project baru
+          cp /tmp/backup/main.dart lib/main.dart
           
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
